@@ -100,10 +100,12 @@ export interface VNode {
   children: Array<VNode | string>;
 }
 
+type StyleProps = Partial<CSSStyleDeclaration>;
+
 export interface Props {
   [key: string]: any;
   className?: string;
-  style?: React.CSSProperties;
+  style?: StyleProps;
   onClick?: (e: MouseEvent) => void;
   // ... остальные события
 }
@@ -824,7 +826,20 @@ export function renderToTest(vNode) {
   return {
     container,
     getByText(text) {
-      return container.querySelector(`*:contains('${text}')`);
+      const walker = document.createTreeWalker(
+        container,
+        NodeFilter.SHOW_ELEMENT,
+        null
+      );
+
+      while (walker.nextNode()) {
+        const node = walker.currentNode;
+        if (node.textContent && node.textContent.trim() === text) {
+          return node;
+        }
+      }
+
+      throw new Error(`Текст "${text}" не найден`);
     },
     rerender(newVNode) {
       mount(newVNode, container);
