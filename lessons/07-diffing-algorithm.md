@@ -116,8 +116,8 @@ export const PATCH_TYPE = {
 {
   type: PATCH_TYPE.UPDATE,
   props: {
-    add: { class: 'active' },      // Добавить/изменить
-    remove: ['disabled']            // Удалить
+    add: { class: 'active' },              // Добавить/изменить
+    remove: [{ name: 'disabled', value: true }] // Удалить (нужно знать старое значение)
   }
 }
 
@@ -208,12 +208,12 @@ function diffElement(oldVNode, newVNode) {
 ```javascript
 /**
  * Сравнивает props двух элементов
- * @returns {Object|null} { add: {...}, remove: [...] } или null
+ * @returns {Object|null} { add: {...}, remove: [{name,value}, ...] } или null
  */
 function diffProps(oldProps, newProps) {
   const patches = {
     add: {},    // Новые/изменённые свойства
-    remove: []  // Удалённые свойства
+    remove: []  // Удалённые свойства + их прежние значения (например, обработчики событий)
   };
 
   // Проверяем изменённые и новые свойства
@@ -226,7 +226,10 @@ function diffProps(oldProps, newProps) {
   // Проверяем удалённые свойства
   for (const key in oldProps) {
     if (!(key in newProps)) {
-      patches.remove.push(key);
+      patches.remove.push({
+        name: key,
+        value: oldProps[key]
+      });
     }
   }
 
@@ -249,7 +252,7 @@ const newProps = { class: 'btn active', id: 'submit' };
 diffProps(oldProps, newProps);
 // {
 //   add: { class: 'btn active', id: 'submit' },
-//   remove: ['disabled']
+//   remove: [{ name: 'disabled', value: true }]
 // }
 ```
 
@@ -403,7 +406,10 @@ function diffProps(oldProps, newProps) {
   // Удалённые
   for (const key in oldProps) {
     if (!(key in newProps)) {
-      patches.remove.push(key);
+      patches.remove.push({
+        name: key,
+        value: oldProps[key]
+      });
     }
   }
 

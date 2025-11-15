@@ -70,15 +70,15 @@ useEffect(
  * @param {Array} deps - Массив зависимостей
  */
 export function useEffect(effect, deps) {
-  if (!currentComponent) {
+  if (!currentInstance) {
     throw new Error('useEffect can only be called inside a component');
   }
 
-  if (!componentStates.has(currentComponent)) {
-    componentStates.set(currentComponent, []);
+  if (!componentStates.has(currentInstance)) {
+    componentStates.set(currentInstance, []);
   }
 
-  const hooks = componentStates.get(currentComponent);
+  const hooks = componentStates.get(currentInstance);
   const hookIndex = currentHookIndex;
 
   // Предыдущий эффект
@@ -99,7 +99,7 @@ export function useEffect(effect, deps) {
     };
 
     // Планируем выполнение эффекта
-    scheduleEffect(currentComponent, hookIndex);
+    scheduleEffect(currentInstance, hookIndex);
   } else {
     // Зависимости не изменились — сохраняем старый эффект
     hooks[hookIndex] = prevEffect;
@@ -120,8 +120,8 @@ const effectQueue = [];
 /**
  * Планирует выполнение эффекта
  */
-function scheduleEffect(component, hookIndex) {
-  effectQueue.push({ component, hookIndex });
+function scheduleEffect(instance, hookIndex) {
+  effectQueue.push({ instance, hookIndex });
 
   // Выполняем эффекты после рендера
   if (!isEffectScheduled) {
@@ -138,8 +138,8 @@ let isEffectScheduled = false;
 function flushEffects() {
   isEffectScheduled = false;
 
-  effectQueue.forEach(({ component, hookIndex }) => {
-    const hooks = componentStates.get(component);
+  effectQueue.forEach(({ instance, hookIndex }) => {
+    const hooks = componentStates.get(instance);
     const hook = hooks[hookIndex];
 
     if (hook) {

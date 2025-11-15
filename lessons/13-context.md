@@ -84,17 +84,20 @@ export function createContext(defaultValue = undefined) {
     _id: Symbol('context')
   };
 
+  const valueStack = [];
+
   // Provider — компонент для предоставления значения
   context.Provider = function Provider({ value, children }) {
-    // Сохраняем текущее значение
-    const prevValue = context._currentValue;
+    // Сохраняем предыдущее значение в стек,
+    // чтобы корректно работать с вложенными провайдерами
+    valueStack.push(context._currentValue);
     context._currentValue = value;
 
     // Рендерим детей
     const result = h(Fragment, null, ...children);
 
-    // Можно добавить cleanup для восстановления
-    // (но для простоты опустим)
+    // После рендера восстанавливаем прошлое значение
+    context._currentValue = valueStack.pop();
 
     return result;
   };
@@ -102,6 +105,10 @@ export function createContext(defaultValue = undefined) {
   return context;
 }
 ```
+
+Теперь один Provider не «ломает» значение для соседних веток:
+значение кладётся в стек перед рендером и восстанавливается после,
+поэтому вложенные провайдеры работают независимо.
 
 ## Хук useContext
 
@@ -112,7 +119,7 @@ export function createContext(defaultValue = undefined) {
  * @returns {any} Текущее значение контекста
  */
 export function useContext(context) {
-  if (!currentComponent) {
+  if (!currentInstance) {
     throw new Error('useContext can only be called inside a component');
   }
 

@@ -198,10 +198,11 @@ function patchUpdate(element, patch) {
  * @param {Object} propsPatch - { add: {...}, remove: [...] }
  */
 function patchProps(element, propsPatch) {
-  // Удаляем старые свойства
+  // Удаляем старые свойства (нам нужно знать и имя, и предыдущее значение,
+  // чтобы корректно отписаться от событий и сбросить boolean-поля)
   if (propsPatch.remove) {
-    propsPatch.remove.forEach(propName => {
-      removeProp(element, propName);
+    propsPatch.remove.forEach(({ name, value }) => {
+      removeProp(element, name, value);
     });
   }
 
@@ -222,12 +223,16 @@ function patchProps(element, propsPatch) {
 
 const propsPatch = {
   add: { class: 'btn active', id: 'submit' },
-  remove: ['disabled']
+  remove: [{ name: 'disabled', value: true }]
 };
 
 patchProps(button, propsPatch);
 // <button class="btn active" id="submit">Click</button>
 ```
+
+Чтобы корректно удалить обработчик события, boolean-атрибут или, например, `value`,
+мы храним в `propsPatch.remove` не только имя свойства, но и старое значение —
+его передаём в `removeProp`.
 
 ### Обновление детей
 
@@ -333,8 +338,8 @@ export function patch(parent, patch, element, index = 0) {
  */
 function patchProps(element, propsPatch) {
   if (propsPatch.remove) {
-    propsPatch.remove.forEach(name => {
-      removeProp(element, name);
+    propsPatch.remove.forEach(({ name, value }) => {
+      removeProp(element, name, value);
     });
   }
 

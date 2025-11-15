@@ -62,14 +62,16 @@ function Counter() {
 
 ```javascript
 /**
- * Глобальное хранилище состояния компонентов
+ * Глобальное хранилище состояния компонентов.
+ * Ключом служит не сама функция компонента, а экземпляр (конкретное место в дереве).
+ * Таким образом два Counter рядом не делят одно и то же состояние.
  */
-const componentStates = new Map();
+const componentStates = new WeakMap();
 
 /**
- * Текущий рендерящийся компонент
+ * Текущий рендерящийся экземпляр компонента
  */
-let currentComponent = null;
+let currentInstance = null;
 
 /**
  * Индекс текущего хука
@@ -86,16 +88,16 @@ let currentHookIndex = 0;
  * @returns {[any, Function]} Кортеж [значение, setter]
  */
 export function useState(initialValue) {
-  if (!currentComponent) {
+  if (!currentInstance) {
     throw new Error('useState can only be called inside a component');
   }
 
-  // Получаем или создаём массив хуков для компонента
-  if (!componentStates.has(currentComponent)) {
-    componentStates.set(currentComponent, []);
+  // Получаем или создаём массив хуков для конкретного экземпляра
+  if (!componentStates.has(currentInstance)) {
+    componentStates.set(currentInstance, []);
   }
 
-  const hooks = componentStates.get(currentComponent);
+  const hooks = componentStates.get(currentInstance);
   const hookIndex = currentHookIndex;
 
   // Инициализация хука при первом вызове
@@ -120,7 +122,7 @@ export function useState(initialValue) {
     if (nextValue !== hook.value) {
       hook.value = nextValue;
       // Планируем перерисовку компонента
-      scheduleRerender(currentComponent);
+      scheduleRerender(currentInstance);
     }
   };
 
@@ -133,29 +135,48 @@ export function useState(initialValue) {
 
 ### Вызов компонента с контекстом
 
+Важно: идентификатором для состояния должен служить **экземпляр**, а не функция.
+Если использовать сам компонент в качестве ключа, два `<Counter />` на странице
+будут обращаться к одной и той же записи и начнут делить состояние. Поэтому
+каждый раз, когда компонент встречается в дереве, мы сохраняем объект `instance`.
+Diff во время обновления прокидывает ссылку на старый `instance` в новый виртуальный
+узел, чтобы хуки продолжали читать «свои» значения.
+
 Обновим функцию `h()` для установки контекста:
 
 ```javascript
 export function h(type, props, ...children) {
   // Если type — функция (компонент)
   if (typeof type === 'function') {
-    // Сохраняем текущий контекст
-    const prevComponent = currentComponent;
+    const prevInstance = currentInstance;
     const prevHookIndex = currentHookIndex;
 
-    // Устанавливаем новый контекст
-    currentComponent = type; // Используем саму функцию как ID
+    // При повторных рендерах diff передаёт "старый" экземпляр через служебное поле __instance.
+    // Если поле отсутствует — создаём новый экземпляр.
+    const instance =
+      props && props.__instance
+        ? props.__instance
+        : { type, key: props?.key ?? null };
+
+    currentInstance = instance;
     currentHookIndex = 0;
 
     try {
-      // Вызываем компонент
+      // Не прокидываем служебное поле внутрь пользовательских props
       const componentProps = { ...props, children };
+      if ('__instance' in componentProps) {
+        delete componentProps.__instance;
+      }
+
       const vNode = type(componentProps);
+
+      // Сохраняем экземпляр на возвращаемом vNode,
+      // чтобы diff мог передать его при следующем обновлении
+      vNode.__instance = instance;
 
       return vNode;
     } finally {
-      // Восстанавливаем предыдущий контекст
-      currentComponent = prevComponent;
+      currentInstance = prevInstance;
       currentHookIndex = prevHookIndex;
     }
   }
@@ -174,7 +195,9 @@ export function h(type, props, ...children) {
 
 ```javascript
 /**
- * Множество компонентов для перерисовки
+ * Множество экземпляров компонентов, для которых запрошено обновление.
+ * Пока мы перерисовываем весь корень, но в будущем можно будет обновлять
+ * только нужные ветки, имея ссылку на конкретный instance.
  */
 const componentsToRerender = new Set();
 let isRerenderScheduled = false;

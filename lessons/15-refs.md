@@ -48,15 +48,15 @@ function AutoFocusInput() {
  * @returns {Object} { current: value }
  */
 export function useRef(initialValue) {
-  if (!currentComponent) {
+  if (!currentInstance) {
     throw new Error('useRef can only be called inside a component');
   }
 
-  if (!componentStates.has(currentComponent)) {
-    componentStates.set(currentComponent, []);
+  if (!componentStates.has(currentInstance)) {
+    componentStates.set(currentInstance, []);
   }
 
-  const hooks = componentStates.get(currentComponent);
+  const hooks = componentStates.get(currentInstance);
   const hookIndex = currentHookIndex;
 
   // Создаём ref только один раз

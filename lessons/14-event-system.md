@@ -83,15 +83,22 @@ h('button', { onclick: increment }, count)
 
 ### Решение 2: useCallback (опционально)
 
+Важно не пытаться вызывать `setState` внутри самого `useCallback`, иначе во время
+каждого рендера возникнет бесконечный цикл. Вместо этого сохраняем последнюю
+версию функции в `useRef`.
+
 ```javascript
 function useCallback(callback, deps) {
-  const [memoized, setMemoized] = useState({ callback, deps });
+  const memoRef = useRef({ callback, deps });
 
-  if (!deps || deps.some((dep, i) => dep !== memoized.deps[i])) {
-    setMemoized({ callback, deps });
+  if (
+    !memoRef.current.deps ||
+    deps.some((dep, i) => dep !== memoRef.current.deps[i])
+  ) {
+    memoRef.current = { callback, deps };
   }
 
-  return memoized.callback;
+  return memoRef.current.callback;
 }
 
 // Использование

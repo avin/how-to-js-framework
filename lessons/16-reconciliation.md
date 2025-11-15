@@ -432,15 +432,21 @@ const ExpensiveList = memo(({ items }) => {
 
 ### 3. useMemo — мемоизация вычислений
 
+Важно: `useMemo` не должен вызывать `setState` внутри себя — это приведёт к
+бесконечным рендерам. Гораздо надёжнее хранить кэш в `useRef`.
+
 ```javascript
 export function useMemo(factory, deps) {
-  const [memoized, setMemoized] = useState({ value: null, deps: null });
+  const memoRef = useRef({ value: null, deps: null });
 
-  if (!memoized.deps || !arraysEqual(deps, memoized.deps)) {
-    setMemoized({ value: factory(), deps });
+  if (!memoRef.current.deps || !arraysEqual(deps, memoRef.current.deps)) {
+    memoRef.current = {
+      value: factory(),
+      deps
+    };
   }
 
-  return memoized.value;
+  return memoRef.current.value;
 }
 
 // Использование

@@ -58,6 +58,11 @@ Boolean атрибуты работают особым образом:
 <input>
 ```
 
+Важно помнить, что имя HTML-атрибута не всегда совпадает с DOM-свойством.
+Например, `<input readonly>` должен синхронизироваться с `element.readOnly`
+с заглавной буквой `O`. Поэтому полезно держать карту соответствий между
+атрибутом и свойством.
+
 ```javascript
 // ❌ Неправильно
 element.setAttribute('disabled', false); // Строка "false" - атрибут всё равно есть!
@@ -215,19 +220,21 @@ function isPropertyName(name) {
 }
 
 /**
- * Boolean атрибуты
+ * Boolean атрибуты и соответствующие DOM-свойства.
+ * Для readonly, например, HTML-атрибут пишется строчными,
+ * а DOM-свойство — readOnly (с заглавной O).
  */
-const BOOLEAN_ATTRS = new Set([
-  'disabled',
-  'readonly',
-  'required',
-  'autofocus',
-  'autoplay',
-  'controls',
-  'loop',
-  'muted',
-  'multiple',
-  'hidden'
+const BOOLEAN_ATTRS = new Map([
+  ['disabled', 'disabled'],
+  ['readonly', 'readOnly'],
+  ['required', 'required'],
+  ['autofocus', 'autofocus'],
+  ['autoplay', 'autoplay'],
+  ['controls', 'controls'],
+  ['loop', 'loop'],
+  ['muted', 'muted'],
+  ['multiple', 'multiple'],
+  ['hidden', 'hidden']
 ]);
 
 function isBooleanAttr(name) {
@@ -238,12 +245,14 @@ function isBooleanAttr(name) {
  * Устанавливает boolean атрибут
  */
 function setBooleanAttr(element, name, value) {
+  const domProp = BOOLEAN_ATTRS.get(name) || name;
+
   if (value) {
     element.setAttribute(name, '');
-    element[name] = true; // Также устанавливаем свойство
+    element[domProp] = true; // Также синхронизируем DOM-свойство
   } else {
     element.removeAttribute(name);
-    element[name] = false;
+    element[domProp] = false;
   }
 }
 
@@ -305,8 +314,9 @@ function removeProp(element, name, value) {
 
   // Boolean атрибуты
   if (isBooleanAttr(name)) {
+    const domProp = BOOLEAN_ATTRS.get(name) || name;
     element.removeAttribute(name);
-    element[name] = false;
+    element[domProp] = false;
     return;
   }
 
@@ -556,19 +566,27 @@ function isPropertyName(name) {
   return DOM_PROPERTIES.has(name);
 }
 
-const BOOLEAN_ATTRS = new Set(['disabled', 'readonly', 'required', 'autofocus', 'hidden']);
+const BOOLEAN_ATTRS = new Map([
+  ['disabled', 'disabled'],
+  ['readonly', 'readOnly'],
+  ['required', 'required'],
+  ['autofocus', 'autofocus'],
+  ['hidden', 'hidden']
+]);
 
 function isBooleanAttr(name) {
   return BOOLEAN_ATTRS.has(name);
 }
 
 function setBooleanAttr(element, name, value) {
+  const domProp = BOOLEAN_ATTRS.get(name) || name;
+
   if (value) {
     element.setAttribute(name, '');
-    element[name] = true;
+    element[domProp] = true;
   } else {
     element.removeAttribute(name);
-    element[name] = false;
+    element[domProp] = false;
   }
 }
 
